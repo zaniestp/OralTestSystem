@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<title>Reading Activity</title>
+<style>
+/* ── Reset ──────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  width: 100vw; height: 100vh;
+  overflow: hidden;
+}
+
+body {
+  width: 100vw; height: 100vh;
+  overflow: hidden;
+  background: #050e1a;
+  font-family: 'Segoe UI', Calibri, sans-serif;
+  color: #ddd5bb;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TOP BAR
+═══════════════════════════════════════════════════════════════ */
+#bar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 52px;
+  background: #0a1828;
+  border-bottom: 1px solid rgba(190,155,90,0.22);
+  box-shadow: 0 2px 14px rgba(0,0,0,0.5);
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  padding: 0 12px;
+  z-index: 50;
+  /* transition for hide-on-end */
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+#bar.hide {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-100%);
+}
+
+/* Left — nav buttons */
+#nav {
+  display: flex; align-items: center; gap: 4px;
+  flex-shrink: 0;
+}
+
+.nb {
+  width: 32px; height: 32px;
+  background: rgba(190,155,90,0.07);
+  border: 1px solid rgba(190,155,90,0.25);
+  border-radius: 3px;
+  color: rgba(190,155,90,0.7);
+  font-family: inherit; font-size: 12px; font-weight: 700;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.14s, color 0.14s, border-color 0.14s;
+  flex-shrink: 0;
+}
+.nb:hover { background: rgba(190,155,90,0.17); border-color: rgba(190,155,90,0.55); color: #ddd5bb; }
+.nb.on    { background: rgba(190,155,90,0.26); border-color: rgba(190,155,90,0.8);  color: #f0e6cc; }
+
+/* Centre — title */
+#title {
+  text-align: center;
+  padding: 0 16px;
+  overflow: hidden;
+}
+#titleTxt {
+  font-size: 14px; font-weight: 500;
+  letter-spacing: 0.06em; color: #ccc3a4;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* Right — timer */
+#timerWrap {
+  flex-shrink: 0;
+  display: flex; align-items: center; gap: 7px;
+}
+#timerWrap svg { width: 15px; height: 15px; fill: rgba(190,155,90,0.5); }
+
+#timer {
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 19px; font-weight: 700;
+  letter-spacing: 0.03em;
+  color: #c4a05c;
+  min-width: 58px; text-align: right;
+  transition: color 0.35s;
+}
+#timer.warn     { color: #e09a38; }
+#timer.urgent   { color: #e04848; animation: blink 1s ease-in-out infinite; }
+#timer.nolimit  { color: #c4a05c; font-size: 24px; letter-spacing: 0; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+/* ═══════════════════════════════════════════════════════════════
+   CONTENT AREA
+═══════════════════════════════════════════════════════════════ */
+#content {
+  position: fixed;
+  top: 52px; left: 0; right: 0; bottom: 0;
+  overflow: hidden;
+  background: #050e1a;
+  transition: top 0.4s ease;
+}
+
+#content.full { top: 0; }
+
+/* Image slide */
+#sImg {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: contain;
+  display: none;
+}
+#sImg.show { display: block; }
+
+/* Video slide */
+#sVidWrap {
+  position: absolute; inset: 0;
+  display: none;
+  align-items: center; justify-content: center;
+}
+#sVidWrap.show { display: flex; }
+
+#sVid {
+  width: 50vw;
+  max-height: calc(100vh - 52px - 24px);
+  background: #000;
+  border-radius: 3px;
+  box-shadow: 0 10px 48px rgba(0,0,0,0.75);
+  display: block;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   INTERACTION BLOCKER  (active during ending state)
+═══════════════════════════════════════════════════════════════ */
+#blocker {
+  display: none;
+  position: fixed; inset: 0;
+  z-index: 55;              /* above content, below end-banner */
+  background: transparent;
+  cursor: default;
+  touch-action: none;       /* kill all browser touch gestures  */
+  -webkit-tap-highlight-color: transparent;
+}
+#blocker.on { display: block; }
+
+/* ═══════════════════════════════════════════════════════════════
+   END BANNER  (20 s reset countdown)
+═══════════════════════════════════════════════════════════════ */
+#endBanner {
+  display: none;
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: 48px;
+  background: rgba(8,18,34,0.95);
+  border-top: 1px solid rgba(190,155,90,0.28);
+  align-items: center; justify-content: center;
+  gap: 12px; z-index: 60;
+  animation: slideUp 0.4s ease;
+}
+#endBanner.show { display: flex; }
+
+@keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: none; opacity: 1; } }
+
+#endBanner .et {
+  font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: rgba(190,155,90,0.7);
+}
+#endBanner .ec {
+  font-family: 'Consolas','Courier New',monospace;
+  font-size: 18px; font-weight: 700;
+  color: #c4a05c; min-width: 28px; text-align: center;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   LOADING OVERLAY
+═══════════════════════════════════════════════════════════════ */
+#loader {
+  position: fixed; inset: 0;
+  background: #050e1a;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 16px; z-index: 999;
+  transition: opacity 0.4s;
+}
+#loader.hide { opacity: 0; pointer-events: none; }
+
+.lspin {
+  width: 34px; height: 34px;
+  border: 3px solid rgba(190,155,90,0.18);
+  border-top-color: #c4a05c;
+  border-radius: 50%;
+  animation: spin 0.85s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.ltxt {
+  font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: rgba(190,155,90,0.55);
+}
+
+/* ── Session guard ─────────────────────────────────────────────── */
+#guard {
+  display: none; position: fixed; inset: 0; z-index: 9999;
+  background: #050e1a;
+  align-items: center; justify-content: center;
+  font-size: 14px; letter-spacing: 0.1em;
+  color: rgba(190,155,90,0.6);
+}
+#guard.show { display: flex; }
+
+/* ── Page fade ─────────────────────────────────────────────────── */
+body.out { animation: fadeOut 0.35s ease forwards; }
+@keyframes fadeOut { to { opacity: 0; } }
+</style>
+</head>
+<body>
+
+<!-- Loading overlay -->
+<div id="loader">
+  <div class="lspin"></div>
+  <div class="ltxt" id="lTxt">Preparing reading materials…</div>
+</div>
+
+<!-- Session guard -->
+<div id="guard">Session not found — returning to setup…</div>
+
+<!-- Top bar -->
+<div id="bar">
+  <div id="nav"></div>
+  <div id="title"><div id="titleTxt"></div></div>
+  <div id="timerWrap">
+    <svg viewBox="0 0 24 24"><path d="M15 1H9v2h6V1zm-4 13h2V8h-2v6zm8.03-6.61l1.42-1.42c-.43-.51-.9-.99-1.41-1.41l-1.42 1.42A8.963 8.963 0 0 0 12 4c-4.97 0-9 4.03-9 9s4.02 9 9 9a8.994 8.994 0 0 0 7.03-14.61zM12 20c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></svg>
+    <div id="timer">--:--</div>
+  </div>
+</div>
+
+<!-- Content area -->
+<div id="content">
+  <img  id="sImg"    src="" alt="" draggable="false">
+  <div  id="sVidWrap">
+    <video id="sVid" controls controlsList="nodownload nofullscreen noremoteplayback"></video>
+  </div>
+</div>
+
+<!-- Interaction blocker (ending state) -->
+<div id="blocker"></div>
+
+<!-- End banner -->
+<div id="endBanner">
+  <span class="et">Session complete &nbsp;·&nbsp; Restarting in</span>
+  <span class="ec" id="ecnt">20</span>
+  <span class="et">seconds</span>
+</div>
+
+<script src="resources/js/common.js"></script>
+<script>
+'use strict';
+
+/* ─────────────────────────────────────────────────────────────────
+   STATE
+───────────────────────────────────────────────────────────────── */
+var S = {
+  total:      0,
+  tStart:     0,
+  durMs:      0,
+  name:       '',
+  types:      {},   // { n: {type:'image'|'video', ext:'png'|'m4v'|'mp4'} }
+  pause:      20,   // seconds to wait on ending slide before reset
+  cur:        2,
+  ended:      false,
+  noLimit:    false,   // true when durMs === 0 (no timer)
+  tickIval:   null
+};
+
+/* ─────────────────────────────────────────────────────────────────
+   GUARD
+───────────────────────────────────────────────────────────────── */
+(function () {
+  var ok = sessionStorage.getItem('ra_name') &&
+           sessionStorage.getItem('ra_total') &&
+           sessionStorage.getItem('ra_tStart');
+  if (!ok) {
+    document.getElementById('guard').classList.add('show');
+    setTimeout(function () {
+      navigateReplace(sessionStorage.getItem('ra_name') ? 'intro.html' : 'setup.html');
+    }, 1800);
+    return;
+  }
+  readSession();
+})();
+
+/* ─────────────────────────────────────────────────────────────────
+   READ SESSION
+───────────────────────────────────────────────────────────────── */
+function readSession() {
+  S.total  = parseInt(sessionStorage.getItem('ra_total'),  10);
+  S.tStart = parseInt(sessionStorage.getItem('ra_tStart'), 10);
+  S.durMs  = parseInt(sessionStorage.getItem('ra_durMs'),  10);
+  S.pause   = parseInt(sessionStorage.getItem('ra_pause'),  10) || 20;
+  S.noLimit = (parseInt(sessionStorage.getItem('ra_mins'), 10) === 0);
+  S.name    = sessionStorage.getItem('ra_name') || '';
+
+  document.getElementById('titleTxt').textContent = S.name;
+  document.title = S.name + ' — Reading Activity';
+
+  // Prevent back navigation
+  preventBackNavigation();
+
+  init();
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   INIT — detect all slide types then build UI
+───────────────────────────────────────────────────────────────── */
+async function init() {
+  var ltxt = document.getElementById('lTxt');
+  var readingCount = S.total - 2;  // slides 2…N-1
+
+  // Detect type for each reading slide (2 … N-1)
+  for (var i = 2; i <= S.total - 1; i++) {
+    ltxt.textContent = 'Loading slide ' + (i - 1) + ' of ' + readingCount + '…';
+    S.types[i] = await getSlideType(i, S.total);
+  }
+  // Ending slide is always image
+  S.types[S.total] = 'image';
+
+  // Build nav buttons (one per reading slide)
+  buildNav(readingCount);
+
+  // Show first reading slide
+  showSlide(2);
+
+  // Start the drift-free countdown
+  tick();
+  S.tickIval = setInterval(tick, 250);
+
+  // Hide loader
+  var loader = document.getElementById('loader');
+  loader.classList.add('hide');
+  setTimeout(function () { loader.style.display = 'none'; }, 450);
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   NAV BUTTONS
+───────────────────────────────────────────────────────────────── */
+function buildNav(count) {
+  var nav = document.getElementById('nav');
+  nav.innerHTML = '';
+  for (var b = 1; b <= count; b++) {
+    (function (btnIdx) {
+      var slideNum = btnIdx + 1;
+      var btn = document.createElement('button');
+      btn.className = 'nb';
+      btn.id = 'nb' + btnIdx;
+      btn.textContent = String(btnIdx);
+      btn.addEventListener('click', function () {
+        if (!S.ended) showSlide(slideNum);
+      });
+      nav.appendChild(btn);
+    })(b);
+  }
+}
+
+function setActive(slideNum) {
+  document.querySelectorAll('.nb').forEach(function (b) { b.classList.remove('on'); });
+  var idx = slideNum - 1;
+  var btn = document.getElementById('nb' + idx);
+  if (btn) btn.classList.add('on');
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   SHOW SLIDE
+───────────────────────────────────────────────────────────────── */
+function showSlide(n) {
+  S.cur = n;
+  // Unpack the type object stored by getSlideType()
+  var info   = S.types[n] || { type: 'image', ext: 'png' };
+  var type   = info.type;
+  var ext    = info.ext || 'png';
+  var imgEl  = document.getElementById('sImg');
+  var vidWrp = document.getElementById('sVidWrap');
+  var vidEl  = document.getElementById('sVid');
+
+  // Pause any playing video
+  if (!vidEl.paused) { vidEl.pause(); }
+
+  if (type === 'video') {
+    imgEl.classList.remove('show');
+    vidEl.src = 'resources/Slide' + n + '.' + ext;
+    vidEl.load();
+    vidWrp.classList.add('show');
+  } else {
+    vidWrp.classList.remove('show');
+    vidEl.src = '';
+    imgEl.src = 'resources/Slide' + n + '.' + ext;
+    imgEl.classList.add('show');
+  }
+
+  // Update active nav button (only for reading slides 2…N-1)
+  if (n >= 2 && n < S.total) { setActive(n); }
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   COUNTDOWN TICK  — drift-free via Date.now()
+───────────────────────────────────────────────────────────────── */
+function tick() {
+  var timerEl = document.getElementById('timer');
+
+  // No-limit mode — show infinity symbol, never end session
+  if (S.noLimit) {
+    timerEl.textContent = '∞';
+    timerEl.classList.remove('warn', 'urgent');
+    return;
+  }
+
+  var remaining = S.durMs - (Date.now() - S.tStart);
+
+  timerEl.textContent = formatTime(remaining);
+  timerEl.classList.remove('warn', 'urgent');
+
+  if (remaining > 60000) {
+    // normal — default gold colour
+  } else if (remaining > 30000) {
+    timerEl.classList.add('warn');
+  } else if (remaining > 0) {
+    timerEl.classList.add('urgent');
+  }
+
+  if (remaining <= 0 && !S.ended) {
+    clearInterval(S.tickIval);
+    timerEl.textContent = '00:00';
+    endSession();
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   END SESSION
+───────────────────────────────────────────────────────────────── */
+function endSession() {
+  S.ended = true;
+
+  // Show ending slide (SlideN — always PNG)
+  showSlide(S.total);
+
+  // ── Hide top bar ────────────────────────────────────────────────
+  document.getElementById('bar').classList.add('hide');
+
+  // ── Expand content to full screen ───────────────────────────────
+  document.getElementById('content').classList.add('full');
+
+  // ── Activate interaction blocker ────────────────────────────────
+  var blocker = document.getElementById('blocker');
+  blocker.classList.add('on');
+
+  var absorb = function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+    return false;
+  };
+
+  // Kill every possible pointer / touch / gesture / scroll event
+  [
+    'click', 'dblclick',
+    'mousedown', 'mouseup', 'mousemove', 'mouseover', 'mouseout',
+    'touchstart', 'touchmove', 'touchend', 'touchcancel',
+    'pointerdown', 'pointerup', 'pointermove', 'pointercancel',
+    'wheel', 'scroll',
+    'gesturestart', 'gesturechange', 'gestureend'
+  ].forEach(function (t) {
+    blocker.addEventListener(t, absorb, { passive: false, capture: true });
+    document.addEventListener(t, absorb, { passive: false, capture: true });
+  });
+
+  // Override video keyboard handler — block all keys during end state
+  document.getElementById('sVid').onkeydown = function (e) {
+    e.preventDefault(); e.stopPropagation(); return false;
+  };
+
+  // Also disable nav buttons properly
+  document.querySelectorAll('.nb').forEach(function (b) {
+    b.disabled = true;
+  });
+
+  // ── Show end banner with 20-second reset countdown ──────────────
+  var banner = document.getElementById('endBanner');
+  var cntEl  = document.getElementById('ecnt');
+  banner.classList.add('show');
+
+  var left = S.pause;
+  cntEl.textContent = String(left);
+
+  var resetIval = setInterval(function () {
+    left--;
+    cntEl.textContent = String(left);
+    if (left <= 0) {
+      clearInterval(resetIval);
+      doReset();
+    }
+  }, 1000);
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   RESET — clear timer, back to intro
+───────────────────────────────────────────────────────────────── */
+function doReset() {
+  // Remove timer data only — preserve name, minutes, total, pause
+  sessionStorage.removeItem('ra_tStart');
+  sessionStorage.removeItem('ra_durMs');
+
+  document.body.classList.add('out');
+  setTimeout(function () { navigateReplace('intro.html'); }, 330);
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   VIDEO keyboard  — allow only playback keys, block everything else
+   (common.js handles the global layer; this catches focus-in-video)
+───────────────────────────────────────────────────────────────── */
+document.getElementById('sVid').addEventListener('keydown', function (e) {
+  if (S.ended) {
+    e.preventDefault(); e.stopPropagation(); return false;
+  }
+  var playbackKeys = [' ', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'k', 'm'];
+  if (!playbackKeys.includes(e.key)) {
+    e.preventDefault();
+  }
+  e.stopPropagation(); // always stop — prevent triggering global handler
+}, true);
+</script>
+</body>
+</html>

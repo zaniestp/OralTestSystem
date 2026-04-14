@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<title>Reading Activity</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 100vw; height: 100vh;
+  overflow: hidden;
+  background: #07101c;
+  font-family: 'Segoe UI', Calibri, sans-serif;
+  user-select: none; -webkit-user-select: none;
+}
+
+/* ── Launch screen (shown before fullscreen is entered) ─────── */
+#launch {
+  position: fixed; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 0;
+  background: #07101c;
+  z-index: 10;
+}
+
+#launch::before {
+  content: '';
+  position: fixed; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(14,44,80,0.75) 0%, transparent 65%),
+    radial-gradient(ellipse 60% 70% at 100% 100%, rgba(140,100,30,0.07) 0%, transparent 55%),
+    repeating-linear-gradient(0deg, transparent, transparent 3px,
+      rgba(255,255,255,0.01) 3px, rgba(255,255,255,0.01) 4px);
+}
+
+.launch-inner {
+  position: relative; z-index: 1;
+  display: flex; flex-direction: column;
+  align-items: center;
+}
+
+.icon-ring {
+  width: 72px; height: 72px;
+  background: rgba(190,155,90,0.09);
+  border: 1px solid rgba(190,155,90,0.3);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 22px;
+  animation: glow 3s ease-in-out infinite;
+}
+.icon-ring svg { width: 34px; height: 34px; fill: #c4a05c; }
+
+@keyframes glow {
+  0%,100% { box-shadow: 0 0 0 0 rgba(190,155,90,0); }
+  50%      { box-shadow: 0 0 22px 4px rgba(190,155,90,0.18); }
+}
+
+h1 {
+  font-size: 26px; font-weight: 300;
+  letter-spacing: 0.22em; text-transform: uppercase;
+  color: #ddd5bb; margin-bottom: 6px;
+}
+.sub {
+  font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase;
+  color: rgba(190,155,90,0.5); margin-bottom: 48px;
+}
+
+.btn-launch {
+  padding: 15px 52px;
+  background: rgba(190,155,90,0.1);
+  border: 1px solid rgba(190,155,90,0.45);
+  border-radius: 4px;
+  color: #c4a05c;
+  font-family: inherit; font-size: 12px; font-weight: 700;
+  letter-spacing: 0.26em; text-transform: uppercase;
+  cursor: pointer;
+  display: flex; align-items: center; gap: 11px;
+  transition: background 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s;
+}
+.btn-launch svg { width: 15px; height: 15px; fill: currentColor; }
+.btn-launch:hover {
+  background: rgba(190,155,90,0.2);
+  border-color: rgba(190,155,90,0.75); color: #e8dfc8;
+  box-shadow: 0 0 18px rgba(190,155,90,0.15);
+}
+.btn-launch:active { background: rgba(190,155,90,0.28); }
+.btn-launch:disabled { opacity: 0.45; cursor: default; }
+
+.hint {
+  margin-top: 20px;
+  font-size: 11px; letter-spacing: 0.1em;
+  color: rgba(255,255,255,0.2); text-align: center;
+}
+
+/* ── Iframe (hidden until fullscreen confirmed) ──────────────── */
+#appFrame {
+  position: fixed; inset: 0;
+  width: 100%; height: 100%;
+  border: none;
+  display: none;        /* shown after fullscreen is entered */
+  background: #07101c;
+}
+#appFrame.show { display: block; }
+
+/* ── Fullscreen-lost overlay ─────────────────────────────────── */
+#fsOverlay {
+  display: none;
+  position: fixed; inset: 0; z-index: 99999;
+  background: rgba(4,10,20,0.97);
+  flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 18px; cursor: pointer;
+}
+#fsOverlay.show { display: flex; }
+
+.fs-icon {
+  width: 64px; height: 64px;
+  border: 1px solid rgba(190,155,90,0.35); border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  animation: fsPulse 2s ease-in-out infinite;
+}
+.fs-icon svg { width: 30px; height: 30px; fill: #c4a05c; }
+.fs-title {
+  font-size: 15px; font-weight: 600;
+  letter-spacing: 0.12em; text-transform: uppercase; color: #ddd5bb;
+}
+.fs-sub {
+  font-size: 11px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: rgba(190,155,90,0.55);
+}
+@keyframes fsPulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(190,155,90,0); }
+  50%      { box-shadow: 0 0 20px 6px rgba(190,155,90,0.2); }
+}
+</style>
+</head>
+<body>
+
+<!-- ── Launch screen ─────────────────────────────────────────── -->
+<div id="launch">
+  <div class="launch-inner">
+    <div class="icon-ring">
+      <svg viewBox="0 0 24 24">
+        <path d="M21 5c-1.11-.35-2.33-.5-3.5-.5-1.95 0-4.05.4-5.5 1.5-1.45-1.1-3.55-1.5-5.5-1.5S2.45 4.9 1 6v14.65c0 .25.25.5.5.5.1 0 .15-.05.25-.05C3.1 20.45 5.05 20 6.5 20c1.95 0 4.05.4 5.5 1.5 1.35-.85 3.8-1.5 5.5-1.5 1.65 0 3.35.3 4.75 1.05.1.05.15.05.25.05.25 0 .5-.25.5-.5V6c-.6-.45-1.25-.75-2-1zm0 13.5c-1.1-.35-2.3-.5-3.5-.5-1.7 0-4.15.65-5.5 1.5V8c1.35-.85 3.8-1.5 5.5-1.5 1.2 0 2.4.15 3.5.5v11.5z"/>
+      </svg>
+    </div>
+    <h1>Reading Activity</h1>
+    <p class="sub">Offline Edition</p>
+    <button class="btn-launch" id="launchBtn">
+      <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+      Enter &amp; Begin Setup
+    </button>
+    <p class="hint">Enters full screen then opens session setup</p>
+  </div>
+</div>
+
+<!-- ── App iframe — loads all pages inside ───────────────────── -->
+<iframe id="appFrame" src="about:blank" allowfullscreen
+        sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
+
+<!-- ── Fullscreen-lost recovery overlay ─────────────────────── -->
+<div id="fsOverlay">
+  <div class="fs-icon">
+    <svg viewBox="0 0 24 24">
+      <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
+    </svg>
+  </div>
+  <div class="fs-title">Full screen required</div>
+  <div class="fs-sub">Click anywhere to return to full screen</div>
+</div>
+
+<script>
+'use strict';
+
+/* ── Helpers ─────────────────────────────────────────────────── */
+function isFullscreen() {
+  return !!(document.fullscreenElement      ||
+            document.webkitFullscreenElement ||
+            document.mozFullScreenElement   ||
+            document.msFullscreenElement);
+}
+
+function doRequestFullscreen() {
+  var el = document.documentElement;
+  var fn = el.requestFullscreen      ||
+           el.webkitRequestFullscreen ||
+           el.mozRequestFullScreen   ||
+           el.msRequestFullscreen;
+  return fn ? fn.call(el) : Promise.resolve();
+}
+
+/* ── Receive navigation requests from iframe via postMessage ─── */
+window.addEventListener('message', function (e) {
+  if (e.data && e.data.type === 'ra_navigate') {
+    document.getElementById('appFrame').src = e.data.url;
+  }
+});
+
+/* ── Launch button ───────────────────────────────────────────── */
+document.getElementById('launchBtn').addEventListener('click', function () {
+  var btn = document.getElementById('launchBtn');
+  btn.disabled = true;
+  btn.querySelector('svg').style.display = 'none';
+  btn.childNodes[btn.childNodes.length - 1].textContent = ' Entering full screen…';
+
+  var showApp = function () {
+    // Hide launch screen, show iframe with setup page
+    document.getElementById('launch').style.display = 'none';
+    var frame = document.getElementById('appFrame');
+    frame.src = 'setup.html';
+    frame.classList.add('show');
+  };
+
+  var fsEvent =
+    ('onfullscreenchange'       in document) ? 'fullscreenchange'       :
+    ('onwebkitfullscreenchange' in document) ? 'webkitfullscreenchange' :
+    ('onmozfullscreenchange'    in document) ? 'mozfullscreenchange'    :
+    ('onmsfullscreenchange'     in document) ? 'MSFullscreenChange'     : null;
+
+  if (fsEvent) {
+    // Wait for confirmed fullscreen before showing the app
+    var fallback = setTimeout(showApp, 1500);
+    document.addEventListener(fsEvent, function onFS() {
+      document.removeEventListener(fsEvent, onFS);
+      clearTimeout(fallback);
+      showApp();
+    });
+  }
+
+  doRequestFullscreen().catch(function () { showApp(); });
+
+  // If no fsEvent support, just show after a short delay
+  if (!fsEvent) { setTimeout(showApp, 400); }
+});
+
+/* ── Fullscreen-lost guard (active once app is running) ─────── */
+var fsEvent2 =
+  ('onfullscreenchange'       in document) ? 'fullscreenchange'       :
+  ('onwebkitfullscreenchange' in document) ? 'webkitfullscreenchange' :
+  ('onmozfullscreenchange'    in document) ? 'mozfullscreenchange'    :
+  ('onmsfullscreenchange'     in document) ? 'MSFullscreenChange'     : null;
+
+if (fsEvent2) {
+  document.addEventListener(fsEvent2, function () {
+    var frame = document.getElementById('appFrame');
+    // Only guard after app has started (frame is visible)
+    if (!frame.classList.contains('show')) return;
+    if (!isFullscreen()) {
+      document.getElementById('fsOverlay').classList.add('show');
+    } else {
+      document.getElementById('fsOverlay').classList.remove('show');
+    }
+  });
+}
+
+document.getElementById('fsOverlay').addEventListener('click', function () {
+  doRequestFullscreen().then(function () {
+    document.getElementById('fsOverlay').classList.remove('show');
+  }).catch(function () {
+    document.getElementById('fsOverlay').classList.remove('show');
+  });
+});
+
+/* ── Block keyboard shortcuts on the shell too ───────────────── */
+document.addEventListener('keydown', function (e) {
+  if (e.ctrlKey || e.metaKey || e.altKey) {
+    e.preventDefault(); e.stopPropagation(); return false;
+  }
+  if (/^F\d{1,2}$/.test(e.key) || e.key === 'Escape') {
+    e.preventDefault(); return false;
+  }
+}, true);
+
+document.addEventListener('contextmenu',  function (e) { e.preventDefault(); });
+document.addEventListener('selectstart',  function (e) { e.preventDefault(); });
+document.addEventListener('dragstart',    function (e) { e.preventDefault(); });
+document.addEventListener('mousedown', function (e) {
+  if (e.button === 3 || e.button === 4) { e.preventDefault(); }
+}, true);
+</script>
+</body>
+</html>

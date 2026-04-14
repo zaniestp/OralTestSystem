@@ -1,0 +1,113 @@
+═══════════════════════════════════════════════════════════════════════
+  READING ACTIVITY PLAYER  —  Resource Reference
+  Offline Edition  |  Microsoft Edge on Windows
+═══════════════════════════════════════════════════════════════════════
+
+EXTERNAL LIBRARIES
+───────────────────
+  NONE — this app is 100% vanilla HTML5 / CSS3 / JavaScript.
+  No downloads required. Runs fully offline with no internet.
+
+INTERNAL JS
+────────────
+  resources/js/common.js
+    Loaded by every page. Provides:
+    - Right-click disable
+    - Text selection + drag disable
+    - All Ctrl / Alt / F-key shortcuts blocked (capture phase)
+    - Mouse buttons 3 & 4 (browser back/forward) blocked
+    - requestFullscreen()       — request / maintain fullscreen
+    - preventBackNavigation()   — pushState loop to kill Back button
+    - imageExists(url)          — Promise<bool>
+    - videoExists(url)          — Promise<bool>
+    - detectTotalSlides()       — scans resources/ for Slide*.png/.m4v
+    - getSlideType(n, total)    — returns 'image' | 'video' | 'none'
+    - formatTime(ms)            — returns 'MM:SS' string
+
+SLIDE FILES  (place in resources/ folder)
+──────────────────────────────────────────
+  Slide1.png          Introduction screen    — MUST be PNG
+  Slide2 … Slide(N-1) Reading content pages  — PNG  or  M4V, mixed freely
+  SlideN.png          Ending screen          — MUST be PNG
+
+  Minimum:  Slide1.png  Slide2.png  Slide3.png   (N = 3)
+  Files must be consecutively numbered — no gaps.
+
+  Supported formats:
+    Images : .png
+    Video  : .m4v  (H.264 / AAC — natively supported by Edge on Windows)
+             Tip: .mp4 files can simply be renamed to .m4v
+
+  Navigation buttons:
+    Button 1 = Slide2,  Button 2 = Slide3,  …  Button (N-2) = Slide(N-1)
+
+FOLDER STRUCTURE
+─────────────────
+  reading-app/
+  ├── index.html          Open this in Edge to launch
+  ├── setup.html          Session configuration
+  ├── intro.html          Introduction screen (Slide1.png)
+  ├── reader.html         Timed reading / viewing interface
+  ├── resources.txt       This file
+  └── resources/
+      ├── js/
+      │   └── common.js
+      ├── Slide1.png
+      ├── Slide2.png  (or .m4v)
+      ├── Slide3.png  (or .m4v)
+      └── SlideN.png  (ending — must be PNG)
+
+HOW TO LAUNCH
+──────────────
+  1. Copy the entire reading-app/ folder to the lesson computer.
+  2. Place Slide*.png / Slide*.m4v files in reading-app/resources/.
+  3. Open index.html (or setup.html) in Microsoft Edge.
+  4. Full screen is requested automatically when "Begin Session" is
+     clicked. Edge will show a confirmation prompt the first time.
+
+FULL SCREEN NOTES
+──────────────────
+  - Fullscreen is requested via the Fullscreen API on "Begin Session"
+    (requires a user gesture — Edge will allow it on click).
+  - Fullscreen persists across in-tab navigation (intro → reader).
+  - If Edge exits fullscreen (e.g. Alt+F4 attempt), each subsequent
+    page also calls requestFullscreen() on load as a fallback.
+  - overflow:hidden is set on html and body on every page to prevent
+    scrollbars regardless of fullscreen state.
+
+BEHAVIOUR SUMMARY
+──────────────────
+  Setup    Enter name + duration (1–25 min) → "Begin Session"
+           Detects all slides, enters fullscreen, navigates to intro.
+
+  Intro    Slide1.png fills screen (20 px margin all sides).
+           Click anywhere → timer starts (hidden) → reader opens.
+           Back navigation is disabled; Back button does nothing.
+
+  Reader   Top bar: [nav buttons] [exercise name] [MM:SS timer]
+           Image slides fill content area (object-fit: contain).
+           Video slides are centred at 50% screen width with controls.
+           Timer counts down in real time using Date.now() — no drift.
+           Nav buttons switch between reading slides; timer unaffected.
+           Timer colours:  gold (>60 s)  →  amber (≤60 s)  →  red (≤30 s)
+
+  Ending   Timer hits 00:00 → SlideN.png fills full screen.
+           Top bar slides away and is hidden.
+           Transparent blocker absorbs ALL mouse / touch / pointer /
+           keyboard events — the screen is completely locked.
+           A banner counts down 20 seconds then reloads intro.html.
+           Setup settings (name, duration) are preserved.
+
+SECURITY MEASURES  (all pages)
+────────────────────────────────
+  - Right-click            disabled
+  - Text selection         disabled
+  - Drag                   disabled
+  - Ctrl + any key         blocked
+  - Alt  + any key         blocked  (includes Alt+Left/Right)
+  - F1 – F12               blocked
+  - Mouse back/forward     blocked
+  - Back navigation        pushState loop
+  - Ending state           all events absorbed by full-screen blocker
+
+═══════════════════════════════════════════════════════════════════════

@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<title>Reading Activity — Introduction</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  width: 100vw; height: 100vh;
+  overflow: hidden;
+}
+
+body {
+  width: 100vw; height: 100vh;
+  overflow: hidden;
+  background: #000;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ── Slide image — 20 px spacing on all four sides ─────────────── */
+.stage {
+  position: fixed; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+
+.stage img {
+  display: block;
+  width:  calc(100vw - 40px);
+  height: calc(100vh - 40px);
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ── "Click to begin" pulse hint ───────────────────────────────── */
+.hint {
+  position: fixed;
+  bottom: 30px; left: 50%;
+  transform: translateX(-50%);
+  display: flex; align-items: center; gap: 10px;
+  font-family: 'Segoe UI', Calibri, sans-serif;
+  font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: rgba(210,175,100,0.85);
+  animation: pulse 2.4s ease-in-out infinite;
+  pointer-events: none; z-index: 10;
+  white-space: nowrap;
+}
+
+.hint::before, .hint::after {
+  content: '';
+  display: block; width: 30px; height: 1px;
+  background: rgba(210,175,100,0.45);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.3; }
+  50%       { opacity: 1;   }
+}
+
+/* ── Click ripple ──────────────────────────────────────────────── */
+.ripple {
+  position: fixed; border-radius: 50%;
+  background: rgba(210,175,100,0.3);
+  transform: scale(0);
+  animation: ripple 0.5s ease-out forwards;
+  pointer-events: none; z-index: 20;
+}
+@keyframes ripple { to { transform: scale(10); opacity: 0; } }
+
+/* ── Page fade out ─────────────────────────────────────────────── */
+body.out { animation: fadeOut 0.35s ease forwards; }
+@keyframes fadeOut { to { opacity: 0; } }
+
+/* ── Session guard ─────────────────────────────────────────────── */
+.guard {
+  display: none; position: fixed; inset: 0; z-index: 999;
+  background: #000;
+  align-items: center; justify-content: center;
+  font-family: 'Segoe UI', Calibri, sans-serif;
+  font-size: 14px; letter-spacing: 0.1em;
+  color: rgba(210,175,100,0.6);
+}
+.guard.show { display: flex; }
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <img id="img" src="resources/Slide1.png" alt="Introduction" draggable="false">
+</div>
+
+<div class="hint" id="hint">Click anywhere to begin</div>
+
+<div class="guard" id="guard">Session not configured — returning to setup…</div>
+
+<script src="resources/js/common.js"></script>
+<script>
+'use strict';
+
+// ── Guard ────────────────────────────────────────────────────────
+(function () {
+  if (!sessionStorage.getItem('ra_name') || !sessionStorage.getItem('ra_total')) {
+    document.getElementById('guard').classList.add('show');
+    setTimeout(function () { navigateReplace('setup.html'); }, 1800);
+  }
+})();
+
+// ── Prevent back navigation ──────────────────────────────────────
+preventBackNavigation();
+
+// ── Click to start ───────────────────────────────────────────────
+var started = false;
+
+document.body.addEventListener('click', function (e) {
+  if (started) return;
+  if (document.getElementById('guard').classList.contains('show')) return;
+  started = true;
+
+  // Ripple feedback
+  var r = document.createElement('div');
+  r.className = 'ripple';
+  var sz = 70;
+  r.style.cssText = 'width:' + sz + 'px;height:' + sz + 'px;' +
+    'left:' + (e.clientX - sz / 2) + 'px;top:' + (e.clientY - sz / 2) + 'px;';
+  document.body.appendChild(r);
+
+  // Hide the hint immediately
+  document.getElementById('hint').style.display = 'none';
+
+  // Record the moment the timer starts
+  var mins  = parseInt(sessionStorage.getItem('ra_mins'), 10);
+  var durMs = mins * 60 * 1000;
+  sessionStorage.setItem('ra_tStart', String(Date.now()));
+  sessionStorage.setItem('ra_durMs',  String(durMs));
+
+  // Navigate — replace() so Back cannot return here
+  document.body.classList.add('out');
+  setTimeout(function () { navigateReplace('reader.html'); }, 330);
+});
+</script>
+</body>
+</html>
