@@ -12,4 +12,4 @@ Rules:
   2. All slides in between can be .png or .m4v (mix freely)
   3. Files must be consecutively numbered — no gaps,
   4. Example Slide1 to SlideXX where XX are numeric numbers
-  5. Do not prefix numbers with a zero. **~~Slide06~~** is wrong
+  5. Do not prefix numbers with a zero. **~~Slide06.png~~** is wrong. It should be Silde6.png
